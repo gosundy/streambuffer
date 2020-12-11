@@ -41,12 +41,13 @@ func (buffer *BPoolBuffer) Read(data []byte) (int, error) {
 	readln := 0
 	for buffer.head != nil && readln < len(data) {
 		buffer.head.mux.Lock()
-		rd, err := buffer.head.Read(data)
+		rd, err := buffer.head.Read(data[readln:])
+		readln += rd
 		if err != nil {
 			if err == BpBlockEmpty {
 				if buffer.head.next == nil {
 					buffer.head.mux.Unlock()
-					return 0, nil
+					return readln, nil
 				}
 				_head := buffer.head
 				buffer.head = buffer.head.next
@@ -61,7 +62,7 @@ func (buffer *BPoolBuffer) Read(data []byte) (int, error) {
 			}
 			return 0, err
 		}
-		readln += rd
+
 		buffer.head.mux.Unlock()
 	}
 	return readln, nil
@@ -127,7 +128,9 @@ func (bNode *BPoolNode) Write(data []byte) (int, error) {
 	}
 
 }
-func (bNode *BPoolNode) Close() {
+func (bNode *BPoolNode) Close() error {
 	bNode.read = 0
 	bNode.total = 0
+	bNode.next = nil
+	return nil
 }
