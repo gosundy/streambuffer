@@ -20,3 +20,38 @@ BenchmarkWrite_Read_Concurrent_Ratio_Read_Fast
 BenchmarkWrite_Read_Concurrent_Ratio_Read_Fast-8    	   50928	     23007 ns/op	      32 B/op	       3 allocs/op
 PASS
 ```
+### Usage
+```go
+func Demo(){
+    blockSize := 4096
+	buffer := NewBuffer(WithBlockSize(blockSize))
+	totalWrite := 100000
+	writeLn := 0
+	readLn := 0
+	writeData := make([]byte, 100)
+	readData := make([]byte, 1000)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for {
+			wd, _ := buffer.Write(writeData)
+			writeLn += wd
+			if writeLn == totalWrite {
+				break
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for {
+			rd, _ := buffer.Read(readData)
+			readLn += rd
+			if readLn == totalWrite {
+				break
+			}
+		}
+	}()
+	wg.Wait()
+}
+```
