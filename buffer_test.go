@@ -28,16 +28,20 @@ func TestBPoolNode_Read(t *testing.T) {
 		if writeLn != len(testData) {
 			t.Fatalf("expect %d, actual:%d", len(testData), writeLn)
 		}
+		buffer.InputStreamFinish()
 		totalRead := 0
 		for {
 			readData := make([]byte, 100)
-			readln, _ := buffer.Read(readData)
+			readln, err := buffer.Read(readData)
 			totalRead += readln
-			if writeLn == totalRead {
+			if err != nil {
 				break
 			}
-
 		}
+		if totalRead != writeLn {
+			t.Fatalf("expect read:%d, acutal:%d", writeLn, totalRead)
+		}
+		buffer.ReOpenInputStream()
 	}
 }
 func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {

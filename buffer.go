@@ -2,12 +2,14 @@ package buffer
 
 import (
 	"errors"
+	"io"
 	"sync"
 )
 
-var BpNodeEmpty = errors.New("empty")
-var BpBlockEmpty = errors.New("block empty")
-var BpNodeFull = errors.New("full")
+var ErrNodeEmpty = errors.New("empty")
+var ErrBlockEmpty = errors.New("block empty")
+var ErrBlockFull = errors.New("full")
+var ErrBufferInputStreamHasFinish = errors.New("input stream finished")
 
 type Block struct {
 	data       []byte
@@ -18,10 +20,11 @@ type Block struct {
 	mux        sync.RWMutex
 }
 type Buffer struct {
-	pool    *sync.Pool
-	head    *Block
-	tail    *Block
-	options *Options
+	pool           *sync.Pool
+	head           *Block
+	tail           *Block
+	options        *Options
+	inputStreamEnd bool
 }
 
 func NewBuffer(options ...Option) *Buffer {
@@ -43,27 +46,37 @@ func (buffer *Buffer) fix() {
 		buffer.options.blockSize = 4096
 	}
 }
-func (buffer *Buffer) Read(data []byte) (int, error) {
+func (buffer *Buffer) InputStreamFinish() {
+	buffer.inputStreamEnd = true
+}
+func (buffer *Buffer) ReOpenInputStream() {
+	buffer.inputStreamEnd = false
+}
 
+func (buffer *Buffer) Read(data []byte) (int, error) {
 	readLen := 0
 	for buffer.head != nil && readLen < len(data) {
 		buffer.head.mux.Lock()
 		rd, err := buffer.head.Read(data[readLen:])
 		readLen += rd
 		if err != nil {
-			if err == BpBlockEmpty {
+			if buffer.inputStreamEnd && buffer.head == buffer.tail && readLen == 0 {
+				buffer.head.mux.Unlock()
+				return 0, io.EOF
+			}
+			if err == ErrBlockEmpty {
 				if buffer.head.next == nil {
 					buffer.head.mux.Unlock()
 					return readLen, nil
 				}
 				_head := buffer.head
 				buffer.head = buffer.head.next
-				_head.Close()
+				_head.close()
 				_head.mux.Unlock()
 				buffer.pool.Put(_head)
 				continue
 			}
-			if err == BpNodeEmpty {
+			if err == ErrNodeEmpty {
 				buffer.head.mux.Unlock()
 				return readLen, nil
 			}
@@ -75,12 +88,15 @@ func (buffer *Buffer) Read(data []byte) (int, error) {
 	return readLen, nil
 }
 func (buffer *Buffer) Write(data []byte) (int, error) {
+	if buffer.inputStreamEnd {
+		return 0, ErrBufferInputStreamHasFinish
+	}
 	writeLen := 0
 	for buffer.tail != nil && writeLen < len(data) {
 		buffer.tail.mux.Lock()
 		wd, err := buffer.tail.Write(data[writeLen:])
 		if err != nil {
-			if err == BpNodeFull {
+			if err == ErrBlockFull {
 				newNode := buffer.pool.Get().(*Block)
 				_tail := buffer.tail
 				buffer.tail.next = newNode
@@ -95,16 +111,14 @@ func (buffer *Buffer) Write(data []byte) (int, error) {
 	}
 	return writeLen, nil
 }
-func (buffer *Buffer) Fetch() *Block {
-	return buffer.pool.Get().(*Block)
-}
+
 func (bNode *Block) Read(data []byte) (int, error) {
 	if bNode.totalRead == bNode.blockSize {
-		return 0, BpBlockEmpty
+		return 0, ErrBlockEmpty
 	}
 	reset := bNode.totalWrite - bNode.totalRead
 	if reset == 0 {
-		return 0, BpNodeEmpty
+		return 0, ErrNodeEmpty
 	}
 	needRead := len(data)
 	if reset > needRead {
@@ -122,7 +136,7 @@ func (bNode *Block) Write(data []byte) (int, error) {
 	alreadyWriten := bNode.totalWrite
 	resetWrite := bNode.blockSize - alreadyWriten
 	if resetWrite == 0 {
-		return 0, BpNodeFull
+		return 0, ErrBlockFull
 	}
 	if resetWrite > needWrite {
 		copy(bNode.data[alreadyWriten:], data)
@@ -135,7 +149,7 @@ func (bNode *Block) Write(data []byte) (int, error) {
 	}
 
 }
-func (bNode *Block) Close() {
+func (bNode *Block) close() {
 	bNode.totalRead = 0
 	bNode.totalWrite = 0
 	bNode.next = nil
