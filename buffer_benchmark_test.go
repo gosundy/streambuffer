@@ -6,7 +6,7 @@ import (
 )
 
 func BenchmarkWrite(b *testing.B) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		totalWrite := 100000
@@ -23,7 +23,7 @@ func BenchmarkWrite(b *testing.B) {
 
 }
 func BenchmarkRead(b *testing.B) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		totalWrite := 1000000
@@ -50,7 +50,7 @@ func BenchmarkRead(b *testing.B) {
 	}
 }
 func BenchmarkWrite_Read_Concurrent_Ratio_Equal(b *testing.B) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	writeData := make([]byte, 100)
 	readData := make([]byte, 100)
 	totalWrite := 10000
@@ -95,7 +95,7 @@ func BenchmarkWrite_Read_Concurrent_Ratio_Equal(b *testing.B) {
 
 }
 func BenchmarkWrite_Read_Concurrent_Ratio_Write_Fast(b *testing.B) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	writeData := make([]byte, 1000)
 	readData := make([]byte, 100)
 	totalWrite := 10000
@@ -140,7 +140,7 @@ func BenchmarkWrite_Read_Concurrent_Ratio_Write_Fast(b *testing.B) {
 
 }
 func BenchmarkWrite_Read_Concurrent_Ratio_Read_Fast(b *testing.B) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	writeData := make([]byte, 100)
 	readData := make([]byte, 1000)
 	totalWrite := 10000

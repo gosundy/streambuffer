@@ -5,11 +5,15 @@ import (
 	"testing"
 )
 
+const (
+	TestBlockSize = 4096
+)
+
 func TestBPoolNode_Write(t *testing.T) {
-	buffer := NewBuffer()
+
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	for i := 1; i <= 100; i++ {
-		buffer = NewBuffer()
-		testData := make([]byte, i*BlockSize-1)
+		testData := make([]byte, i*buffer.options.blockSize-1)
 		writeLn, _ := buffer.Write(testData)
 		if writeLn != len(testData) {
 			t.Fatalf("expect %d, actual:%d", len(testData), writeLn)
@@ -17,10 +21,9 @@ func TestBPoolNode_Write(t *testing.T) {
 	}
 }
 func TestBPoolNode_Read(t *testing.T) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	for i := 1; i <= 100; i++ {
-		buffer = NewBuffer()
-		testData := make([]byte, i*BlockSize-1)
+		testData := make([]byte, i*buffer.options.blockSize-1)
 		writeLn, _ := buffer.Write(testData)
 		if writeLn != len(testData) {
 			t.Fatalf("expect %d, actual:%d", len(testData), writeLn)
@@ -38,11 +41,11 @@ func TestBPoolNode_Read(t *testing.T) {
 	}
 }
 func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	writeData := make([]byte, 100)
 	readData := make([]byte, 100)
 
-	for i:=0;i<100;i++ {
+	for i := 0; i < 100; i++ {
 		totalWrite := 10000000
 		writeLn := 0
 		readLn := 0
@@ -55,7 +58,7 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {
 				writeLn += wd
 				//t.Logf("write:%d",writeLn)
 				if writeLn == totalWrite {
-					t.Log("write complete")
+					//t.Log("write complete")
 					break
 				}
 				//time.Sleep(time.Duration(rand.Int31n(10)) * time.Millisecond)
@@ -66,9 +69,9 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {
 			for {
 				rd, _ := buffer.Read(readData)
 				readLn += rd
-			//	t.Logf("readln:%d",readLn)
+				//	t.Logf("readln:%d",readLn)
 				if readLn == totalWrite {
-					t.Log("read complete")
+					//t.Log("read complete")
 					break
 				}
 				//time.Sleep(time.Duration(rand.Int31n(10)) * time.Millisecond)
@@ -78,22 +81,22 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {
 	}
 }
 func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Write_Fast(t *testing.T) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	totalWrite := 100000
 	writeLn := 0
 	readLn := 0
 	writeData := make([]byte, 1000)
 	readData := make([]byte, 100)
-	wg:=sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		for {
 			wd, _ := buffer.Write(writeData)
 			writeLn += wd
-		//	t.Logf("write:%d",writeLn)
+			//	t.Logf("write:%d",writeLn)
 			if writeLn == totalWrite {
-				t.Log("write complete")
+				//	t.Log("write complete")
 				break
 
 			}
@@ -104,10 +107,10 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Write_Fast(t *testing.T) {
 		defer wg.Done()
 		for {
 			rd, _ := buffer.Read(readData)
-			readLn+=rd
-			t.Logf("readln:%d",readLn)
-			if readLn==totalWrite{
-				t.Log("read complete")
+			readLn += rd
+			//t.Logf("readln:%d", readLn)
+			if readLn == totalWrite {
+				//t.Log("read complete")
 				break
 			}
 			//time.Sleep(time.Duration(rand.Int31n(10)) * time.Millisecond)
@@ -117,22 +120,22 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Write_Fast(t *testing.T) {
 }
 
 func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Read_Fast(t *testing.T) {
-	buffer := NewBuffer()
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	totalWrite := 100000
 	writeLn := 0
 	readLn := 0
 	writeData := make([]byte, 100)
 	readData := make([]byte, 1000)
-	wg:=sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		for {
 			wd, _ := buffer.Write(writeData)
 			writeLn += wd
-		//	t.Logf("write:%d",writeLn)
+			//	t.Logf("write:%d",writeLn)
 			if writeLn == totalWrite {
-				t.Log("write complete")
+				//t.Log("write complete")
 				break
 
 			}
@@ -143,10 +146,10 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Read_Fast(t *testing.T) {
 		defer wg.Done()
 		for {
 			rd, _ := buffer.Read(readData)
-			readLn+=rd
+			readLn += rd
 			//t.Logf("readln:%d",readLn)
-			if readLn==totalWrite{
-				t.Log("read complete")
+			if readLn == totalWrite {
+				//t.Log("read complete")
 				break
 			}
 			//time.Sleep(time.Duration(rand.Int31n(10)) * time.Millisecond)
@@ -154,5 +157,3 @@ func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Read_Fast(t *testing.T) {
 	}()
 	wg.Wait()
 }
-
-
