@@ -29,7 +29,7 @@ type Buffer struct {
 
 func NewBuffer(options ...Option) *Buffer {
 
-	buffer := &Buffer{pool: &sync.Pool{}}
+	buffer := &Buffer{}
 	buffer.options = loadOptions(options...)
 	buffer.fix()
 	blockSize := buffer.options.blockSize
@@ -45,6 +45,11 @@ func (buffer *Buffer) fix() {
 	if buffer.options.blockSize == 0 {
 		buffer.options.blockSize = 4096
 	}
+	if buffer.options.pool != nil {
+		buffer.pool = buffer.options.pool
+	} else {
+		buffer.pool = &sync.Pool{}
+	}
 }
 func (buffer *Buffer) InputStreamFinish() {
 	buffer.inputStreamEnd = true
@@ -53,8 +58,14 @@ func (buffer *Buffer) ReOpenInputStream() {
 	buffer.inputStreamEnd = false
 }
 
-func (buffer *Buffer) Read(data []byte) (int, error) {
-	readLen := 0
+func (buffer *Buffer) Read(data []byte) (readLen int, err error) {
+	readLen = 0
+	defer func() {
+		if err == nil && readLen == 0 {
+			err = buffer.options.emptyError
+			return
+		}
+	}()
 	for buffer.head != nil && readLen < len(data) {
 		buffer.head.mux.Lock()
 		rd, err := buffer.head.Read(data[readLen:])

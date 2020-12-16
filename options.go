@@ -1,8 +1,13 @@
 package buffer
 
+import "sync"
+
 type Option func(options *Options)
 type Options struct {
-	blockSize int
+	blockSize  int
+	emptyError error
+	fullError  error
+	pool       *sync.Pool
 }
 
 func loadOptions(options ...Option) *Options {
@@ -12,11 +17,23 @@ func loadOptions(options ...Option) *Options {
 	}
 	return opts
 }
-func WithBlockSize(blockSize int) Option {
-	if blockSize <= 0 {
-		blockSize = 4096
+func WithPool(pool *sync.Pool) Option {
+	return func(options *Options) {
+		options.pool = pool
 	}
+}
+func WithBlockSize(blockSize int) Option {
 	return func(options *Options) {
 		options.blockSize = blockSize
+	}
+}
+func WithEmptyError(err error) Option {
+	return func(options *Options) {
+		options.emptyError = err
+	}
+}
+func WithFullError(err error) Option {
+	return func(options *Options) {
+		options.fullError = err
 	}
 }
