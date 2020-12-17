@@ -122,7 +122,12 @@ func (buffer *Buffer) Write(data []byte) (int, error) {
 	}
 	return writeLen, nil
 }
-
+func (buffer *Buffer) IsEmpty() bool {
+	if buffer.tail == buffer.head && buffer.tail.totalRead == buffer.tail.totalWrite {
+		return true
+	}
+	return false
+}
 func (bNode *Block) Read(data []byte) (int, error) {
 	if bNode.totalRead == bNode.blockSize {
 		return 0, ErrBlockEmpty

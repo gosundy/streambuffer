@@ -44,6 +44,33 @@ func TestBPoolNode_Read(t *testing.T) {
 		buffer.ReOpenInputStream()
 	}
 }
+func TestBPoolNode_IsEmpty(t *testing.T) {
+	buffer := NewBuffer(WithBlockSize(TestBlockSize))
+	for i := 1; i <= 100; i++ {
+		testData := make([]byte, i*buffer.options.blockSize-1)
+		writeLn, _ := buffer.Write(testData)
+		if writeLn != len(testData) {
+			t.Fatalf("expect %d, actual:%d", len(testData), writeLn)
+		}
+		buffer.InputStreamFinish()
+		totalRead := 0
+		for {
+			readData := make([]byte, 100)
+			readln, err := buffer.Read(readData)
+			totalRead += readln
+			if err != nil {
+				break
+			}
+		}
+		if totalRead != writeLn {
+			t.Fatalf("expect read:%d, acutal:%d", writeLn, totalRead)
+		}
+		buffer.ReOpenInputStream()
+	}
+	if !buffer.IsEmpty() {
+		t.Fatalf("expect is empty, acutal not empty")
+	}
+}
 func TestBPoolBuffer_Write_Read_Concurrent_Ratio_Equal(t *testing.T) {
 	buffer := NewBuffer(WithBlockSize(TestBlockSize))
 	writeData := make([]byte, 100)
